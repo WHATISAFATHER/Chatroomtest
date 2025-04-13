@@ -57,6 +57,12 @@
       background-color: #e0f7fa;
     }
 
+    .message img {
+      max-width: 100%;
+      border-radius: 10px;
+      margin-top: 5px;
+    }
+
     .message.mod {
       color: red;
       font-weight: bold;
@@ -64,6 +70,7 @@
 
     .message-form {
       display: flex;
+      flex-wrap: wrap;
       padding: 15px;
       border-top: 2px solid #4caf50;
       background-color: #f7fbfc;
@@ -76,10 +83,12 @@
       border: 2px solid #4caf50;
       border-radius: 8px;
       margin-right: 10px;
+      margin-bottom: 10px;
     }
 
     .message-form__file {
       margin-right: 10px;
+      margin-bottom: 10px;
     }
 
     .message-form__button {
