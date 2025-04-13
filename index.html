@@ -2,17 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Education Chat for Kids</title>
   <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
   <style>
     body {
       font-family: 'Comic Sans MS', sans-serif;
-      background-color: #f4f8ff;
       margin: 0;
       padding: 20px;
+      background-color: #f4f8ff;
       display: flex;
       flex-direction: column;
       align-items: center;
+      min-height: 100vh;
     }
 
     .container {
@@ -37,8 +39,16 @@
 
     .members-count {
       font-size: 18px;
-      padding: 10px;
+      padding: 15px;
       background-color: #e8f5e9;
+      border-bottom: 2px solid #4caf50;
+    }
+
+    .members-list {
+      background-color: #f7fbfc;
+      padding: 15px;
+      max-height: 100px;
+      overflow-y: auto;
       border-bottom: 2px solid #4caf50;
     }
 
@@ -47,30 +57,23 @@
       padding: 15px;
       background-color: #fefefe;
       overflow-y: auto;
-      height: 300px;
     }
 
     .message {
-      margin-bottom: 10px;
       padding: 10px;
+      margin-bottom: 10px;
       border-radius: 10px;
-      background-color: #e0f7fa;
+      background-color: #e8f4ff;
     }
 
     .message img {
       max-width: 100%;
-      border-radius: 8px;
+      border-radius: 10px;
       margin-top: 5px;
-    }
-
-    .message.mod-tag {
-      color: red;
-      font-weight: bold;
     }
 
     .message-form {
       display: flex;
-      flex-wrap: wrap;
       padding: 15px;
       border-top: 2px solid #4caf50;
       background-color: #f7fbfc;
@@ -83,13 +86,10 @@
       border: 2px solid #4caf50;
       border-radius: 8px;
       margin-right: 10px;
-      margin-bottom: 10px;
-      width: 100%;
     }
 
     .message-form__file {
       margin-right: 10px;
-      margin-bottom: 10px;
     }
 
     .message-form__button {
@@ -100,7 +100,6 @@
       font-size: 16px;
       border-radius: 8px;
       cursor: pointer;
-      margin-bottom: 10px;
     }
 
     .message-form__button:hover {
@@ -109,14 +108,10 @@
 
     #timeout-screen, #kicked-screen, #banned-screen {
       display: none;
-      margin-top: 30px;
       text-align: center;
-      font-size: 20px;
       color: red;
-    }
-
-    #mod-login {
-      margin: 10px auto 20px;
+      font-size: 20px;
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -124,11 +119,12 @@
   <div class="container" id="chat-container">
     <div class="header">Education Chat for Kids</div>
     <div class="members-count" id="members-count">0 members online</div>
+    <div class="members-list"></div>
     <div class="messages" id="messages"></div>
     <form class="message-form" id="form">
-      <input class="message-form__input" id="input" type="text" placeholder="Type a message..." />
-      <input class="message-form__file" id="imageInput" type="file" accept="image/*">
-      <button class="message-form__button" type="submit">Send</button>
+      <input class="message-form__input" id="input" placeholder="Type a message..." type="text" />
+      <input class="message-form__file" id="imageInput" type="file" accept="image/*" />
+      <input class="message-form__button" value="Send" type="submit" />
     </form>
     <button id="mod-login">Sign in as Moderator</button>
   </div>
@@ -137,6 +133,6 @@
   <div id="kicked-screen">You have been kicked from the chat.</div>
   <div id="banned-screen">You are banned from the chat.</div>
 
-  <script src="script.js"></script>
+  <script src="./script.js"></script>
 </body>
 </html>
