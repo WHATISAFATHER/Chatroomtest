@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Education Chat</title>
+  <title>Education Chat for Kids</title>
   <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
   <style>
     body {
@@ -57,13 +57,20 @@
       background-color: #e0f7fa;
     }
 
-    .message.mod {
+    .message img {
+      max-width: 100%;
+      border-radius: 8px;
+      margin-top: 5px;
+    }
+
+    .message.mod-tag {
       color: red;
       font-weight: bold;
     }
 
     .message-form {
       display: flex;
+      flex-wrap: wrap;
       padding: 15px;
       border-top: 2px solid #4caf50;
       background-color: #f7fbfc;
@@ -76,6 +83,13 @@
       border: 2px solid #4caf50;
       border-radius: 8px;
       margin-right: 10px;
+      margin-bottom: 10px;
+      width: 100%;
+    }
+
+    .message-form__file {
+      margin-right: 10px;
+      margin-bottom: 10px;
     }
 
     .message-form__button {
@@ -86,9 +100,14 @@
       font-size: 16px;
       border-radius: 8px;
       cursor: pointer;
+      margin-bottom: 10px;
     }
 
-    #kicked-screen, #banned-screen, #timeout-screen {
+    .message-form__button:hover {
+      background-color: #45a049;
+    }
+
+    #timeout-screen, #kicked-screen, #banned-screen {
       display: none;
       margin-top: 30px;
       text-align: center;
@@ -97,25 +116,26 @@
     }
 
     #mod-login {
-      margin: 15px auto;
+      margin: 10px auto 20px;
     }
   </style>
 </head>
 <body>
   <div class="container" id="chat-container">
-    <div class="header">Education Chat</div>
+    <div class="header">Education Chat for Kids</div>
     <div class="members-count" id="members-count">0 members online</div>
     <div class="messages" id="messages"></div>
     <form class="message-form" id="form">
       <input class="message-form__input" id="input" type="text" placeholder="Type a message..." />
+      <input class="message-form__file" id="imageInput" type="file" accept="image/*">
       <button class="message-form__button" type="submit">Send</button>
     </form>
     <button id="mod-login">Sign in as Moderator</button>
   </div>
 
+  <div id="timeout-screen">You are timed out. Time left: <span id="timeout-timer"></span></div>
   <div id="kicked-screen">You have been kicked from the chat.</div>
   <div id="banned-screen">You are banned from the chat.</div>
-  <div id="timeout-screen">You are timed out. Wait <span id="timeout-timer"></span> minutes.</div>
 
   <script src="script.js"></script>
 </body>
