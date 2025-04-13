@@ -11,7 +11,8 @@ const DOM = {
   messages: document.getElementById("messages"),
   membersCount: document.getElementById("members-count"),
   timeoutScreen: document.getElementById("timeout-screen"),
-  timeoutTimer: document.getElementById("timeout-timer")
+  timeoutTimer: document.getElementById("timeout-timer"),
+  imageInput: document.getElementById("imageInput")
 };
 
 const bannedIPs = JSON.parse(localStorage.getItem("bannedIPs") || "[]");
@@ -62,19 +63,34 @@ DOM.form.addEventListener("submit", e => {
   }
 
   const text = DOM.input.value.trim();
-  if (!text) return;
+  const imageFile = DOM.imageInput.files[0];
+
+  if (!text && !imageFile) return;
 
   if ((text.startsWith("/kick ") || text.startsWith("/ban ") || text.startsWith("/timeout ")) && !isMod) {
     alert("Only moderators can use this command.");
     return;
   }
 
-  drone.publish({
-    room: "observable-room",
-    message: { type: "text", content: text }
-  });
+  if (imageFile) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      drone.publish({
+        room: "observable-room",
+        message: { type: "image", content: reader.result }
+      });
+    };
+    reader.readAsDataURL(imageFile);
+    DOM.imageInput.value = "";
+  }
 
-  DOM.input.value = "";
+  if (text) {
+    drone.publish({
+      room: "observable-room",
+      message: { type: "text", content: text }
+    });
+    DOM.input.value = "";
+  }
 });
 
 let members = [];
@@ -130,58 +146,6 @@ drone.on("open", error => {
       if (msg.startsWith("/timeout ") && isSenderMod) {
         const parts = msg.split(" ");
         const target = parts[1];
-        const minutes = parseInt(parts[2]);
-        if (target === myName && minutes > 0) {
-          const endTime = Date.now() + minutes * 60000;
-          storedTimeouts[userIP] = endTime;
-          localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
-          startTimeoutFromStorage(endTime);
-        }
-        return;
-      }
-
-      const modTag = member.clientData.mod ? ' <span class="message mod">[MOD]</span>' : '';
-      addMessage(`${sender}${modTag}: ${msg}`);
-    }
-  });
-});
-
-function updateMemberCount() {
-  DOM.membersCount.textContent = `${members.length} members online`;
-}
-
-function addMessage(text) {
-  const msg = document.createElement("div");
-  msg.className = "message";
-  msg.innerHTML = text;
-  DOM.messages.appendChild(msg);
-  DOM.messages.scrollTop = DOM.messages.scrollHeight;
-}
-
-function startTimeoutFromStorage(endTime) {
-  const duration = Math.floor((endTime - Date.now()) / 1000);
-  DOM.input.disabled = true;
-  DOM.timeoutScreen.style.display = "block";
-  updateTimer(duration);
-
-  clearInterval(timeoutInterval);
-  timeoutInterval = setInterval(() => {
-    const remaining = Math.floor((endTime - Date.now()) / 1000);
-    updateTimer(remaining);
-
-    if (remaining <= 0) {
-      clearInterval(timeoutInterval);
-      DOM.input.disabled = false;
-      DOM.timeoutScreen.style.display = "none";
-
-      delete storedTimeouts[userIP];
-      localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
-    }
-  }, 1000);
-}
-
-function updateTimer(seconds) {
-  const min = Math.floor(seconds / 60);
-  const sec = seconds % 60;
-  DOM.timeoutTimer.textContent = `${min}:${sec.toString().padStart(2, "0")}`;
-}
+        const minutes
+::contentReference[oaicite:3]{index=3}
+ 
