@@ -8,11 +8,11 @@ let timeoutInterval = null;
 const DOM = {
   input: document.getElementById("input"),
   form: document.getElementById("form"),
+  fileInput: document.getElementById("file-input"),
   messages: document.getElementById("messages"),
   membersCount: document.getElementById("members-count"),
   timeoutScreen: document.getElementById("timeout-screen"),
-  timeoutTimer: document.getElementById("timeout-timer"),
-  fileInput: document.getElementById("file-input")
+  timeoutTimer: document.getElementById("timeout-timer")
 };
 
 const bannedIPs = JSON.parse(localStorage.getItem("bannedIPs") || "[]");
@@ -67,6 +67,130 @@ DOM.form.addEventListener("submit", e => {
 
   if (!text && !file) return;
 
-  if ((text.startsWith("/kick ") || text.starts
-::contentReference[oaicite:4]{index=4}
- 
+  if ((text.startsWith("/kick ") || text.startsWith("/ban ") || text.startsWith("/timeout ")) && !isMod) {
+    alert("Only moderators can use this command.");
+    return;
+  }
+
+  if (file && file.type.startsWith("image/")) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      drone.publish({
+        room: "observable-room",
+        message: { type: "image", content: reader.result }
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  if (text) {
+    drone.publish({
+      room: "observable-room",
+      message: { type: "text", content: text }
+    });
+  }
+
+  DOM.input.value = "";
+  DOM.fileInput.value = "";
+});
+
+let members = [];
+
+drone.on("open", error => {
+  if (error) return console.error(error);
+  const room = drone.subscribe("observable-room");
+
+  room.on("members", m => {
+    members = m;
+    updateMemberCount();
+  });
+
+  room.on("member_join", member => {
+    members.push(member);
+    updateMemberCount();
+  });
+
+  room.on("member_leave", ({ id }) => {
+    members = members.filter(m => m.id !== id);
+    updateMemberCount();
+  });
+
+  room.on("data", (message, member) => {
+    if (!member || kicked) return;
+
+    const sender = member.clientData.name;
+    const isSenderMod = member.clientData.mod;
+    const modTag = isSenderMod ? ' <span class="message mod">[MOD]</span>' : '';
+
+    if (message.type === "text") {
+      const msg = `${sender}${modTag}: ${message.content}`;
+      if (message.content.startsWith("/kick ") && isSenderMod && message.content.split(" ")[1] === myName) {
+        kicked = true;
+        document.getElementById("chat-container").style.display = "none";
+        document.getElementById("kicked-screen").style.display = "block";
+      } else if (message.content.startsWith("/ban ") && isSenderMod && message.content.split(" ")[1] === myName) {
+        bannedIPs.push(userIP);
+        localStorage.setItem("bannedIPs", JSON.stringify(bannedIPs));
+        document.getElementById("chat-container").style.display = "none";
+        document.getElementById("banned-screen").style.display = "block";
+      } else if (message.content.startsWith("/timeout ") && isSenderMod) {
+        const parts = message.content.split(" ");
+        const target = parts[1];
+        const minutes = parseInt(parts[2]);
+        if (target === myName && minutes > 0) {
+          const endTime = Date.now() + minutes * 60000;
+          storedTimeouts[userIP] = endTime;
+          localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
+          startTimeoutFromStorage(endTime);
+        }
+      } else {
+        addMessage(msg);
+      }
+    } else if (message.type === "image") {
+      const div = document.createElement("div");
+      div.className = "message";
+      div.innerHTML = `<strong>${sender}${modTag}:</strong><br><img src="${message.content}" alt="image">`;
+      DOM.messages.appendChild(div);
+      DOM.messages.scrollTop = DOM.messages.scrollHeight;
+    }
+  });
+});
+
+function updateMemberCount() {
+  DOM.membersCount.textContent = `${members.length} members online`;
+}
+
+function addMessage(text) {
+  const msg = document.createElement("div");
+  msg.className = "message";
+  msg.innerHTML = text;
+  DOM.messages.appendChild(msg);
+  DOM.messages.scrollTop = DOM.messages.scrollHeight;
+}
+
+function startTimeoutFromStorage(endTime) {
+  const duration = Math.floor((endTime - Date.now()) / 1000);
+  DOM.input.disabled = true;
+  DOM.timeoutScreen.style.display = "block";
+  updateTimer(duration);
+
+  clearInterval(timeoutInterval);
+  timeoutInterval = setInterval(() => {
+    const remaining = Math.floor((endTime - Date.now()) / 1000);
+    updateTimer(remaining);
+
+    if (remaining <= 0) {
+      clearInterval(timeoutInterval);
+      DOM.input.disabled = false;
+      DOM.timeoutScreen.style.display = "none";
+      delete storedTimeouts[userIP];
+      localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
+    }
+  }, 1000);
+}
+
+function updateTimer(seconds) {
+  const min = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  DOM.timeoutTimer.textContent = `${min}:${sec.toString().padStart(2, "0")}`;
+}
