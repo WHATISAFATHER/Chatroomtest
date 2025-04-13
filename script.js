@@ -2,30 +2,34 @@ const CLIENT_ID = 'YwlHBeKbieWWPeOS';
 const myName = "user_" + Math.floor(Math.random() * 10000);
 let isMod = sessionStorage.getItem("isMod") === "true";
 let kicked = false;
-let timeoutEnd = 0;
-let timeoutInterval = null;
 let userIP = null;
-let storedTimeouts = JSON.parse(localStorage.getItem("timeouts") || "{}");
-const bannedIPs = JSON.parse(localStorage.getItem("bannedIPs") || "[]");
+let timeoutInterval = null;
 
-// Get IP address
+const DOM = {
+  input: document.getElementById("input"),
+  form: document.getElementById("form"),
+  messages: document.getElementById("messages"),
+  membersCount: document.getElementById("members-count"),
+  timeoutScreen: document.getElementById("timeout-screen"),
+  timeoutTimer: document.getElementById("timeout-timer")
+};
+
+const bannedIPs = JSON.parse(localStorage.getItem("bannedIPs") || "[]");
+const storedTimeouts = JSON.parse(localStorage.getItem("timeouts") || "{}");
+
 fetch("https://api.ipify.org?format=json")
   .then(res => res.json())
   .then(data => {
     userIP = data.ip;
 
-    // IP banned?
     if (bannedIPs.includes(userIP)) {
       document.getElementById("chat-container").style.display = "none";
       document.getElementById("banned-screen").style.display = "block";
       throw new Error("Banned IP");
     }
 
-    // IP timed out?
     if (storedTimeouts[userIP] && Date.now() < storedTimeouts[userIP]) {
-      timeoutEnd = storedTimeouts[userIP];
-      const secondsLeft = Math.floor((timeoutEnd - Date.now()) / 1000);
-      startTimeout(secondsLeft);
+      startTimeoutFromStorage(storedTimeouts[userIP]);
     }
   });
 
@@ -49,20 +53,11 @@ const drone = new ScaleDrone(CLIENT_ID, {
   data: { name: myName, mod: isMod }
 });
 
-const DOM = {
-  input: document.getElementById("input"),
-  form: document.getElementById("form"),
-  messages: document.getElementById("messages"),
-  membersCount: document.getElementById("members-count"),
-  timeoutScreen: document.getElementById("timeout-screen"),
-  timeoutTimer: document.getElementById("timeout-timer")
-};
-
 DOM.form.addEventListener("submit", e => {
   e.preventDefault();
 
-  if (Date.now() < timeoutEnd) {
-    alert("You are timed out.");
+  if (DOM.input.disabled) {
+    alert("You are currently timed out.");
     return;
   }
 
@@ -137,10 +132,10 @@ drone.on("open", error => {
         const target = parts[1];
         const minutes = parseInt(parts[2]);
         if (target === myName && minutes > 0) {
-          timeoutEnd = Date.now() + minutes * 60000;
-          storedTimeouts[userIP] = timeoutEnd;
+          const endTime = Date.now() + minutes * 60000;
+          storedTimeouts[userIP] = endTime;
           localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
-          startTimeout(minutes * 60);
+          startTimeoutFromStorage(endTime);
         }
         return;
       }
@@ -163,19 +158,22 @@ function addMessage(text) {
   DOM.messages.scrollTop = DOM.messages.scrollHeight;
 }
 
-function startTimeout(seconds) {
-  clearInterval(timeoutInterval);
+function startTimeoutFromStorage(endTime) {
+  const duration = Math.floor((endTime - Date.now()) / 1000);
   DOM.input.disabled = true;
   DOM.timeoutScreen.style.display = "block";
-  updateTimer(seconds);
+  updateTimer(duration);
 
+  clearInterval(timeoutInterval);
   timeoutInterval = setInterval(() => {
-    seconds--;
-    updateTimer(seconds);
-    if (seconds <= 0) {
+    const remaining = Math.floor((endTime - Date.now()) / 1000);
+    updateTimer(remaining);
+
+    if (remaining <= 0) {
       clearInterval(timeoutInterval);
       DOM.input.disabled = false;
       DOM.timeoutScreen.style.display = "none";
+
       delete storedTimeouts[userIP];
       localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
     }
