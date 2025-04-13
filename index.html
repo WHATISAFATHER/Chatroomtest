@@ -101,10 +101,18 @@
     .message-form__button:hover {
       background-color: #45a049;
     }
+
+    #timeout-screen, #kicked-screen, #banned-screen {
+      display: none;
+      text-align: center;
+      color: red;
+      font-size: 20px;
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="container" id="chat-container">
     <div class="header">Education Chat for Kids</div>
     <div class="members-count" id="members-count">0 members online</div>
     <div class="messages" id="messages"></div>
@@ -113,7 +121,13 @@
       <input class="message-form__file" id="imageInput" type="file" accept="image/*" />
       <input class="message-form__button" type="submit" value="Send" />
     </form>
+    <button id="mod-login">Sign in as Moderator</button>
   </div>
+
+  <div id="timeout-screen">You are timed out. Time left: <span id="timeout-timer"></span></div>
+  <div id="kicked-screen">You have been kicked from the chat.</div>
+  <div id="banned-screen">You are banned from the chat.</div>
+
   <script src="script.js"></script>
 </body>
 </html>
