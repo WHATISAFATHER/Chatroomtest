@@ -3,7 +3,7 @@ const myName = "user_" + Math.floor(Math.random() * 10000);
 let isMod = false;
 let kicked = false;
 
-const CLIENT_ID = 'Ww9KIEXUL5KzVED0';
+const CLIENT_ID = 'YwlHBeKbieWWPeOS';
 
 if (bannedNames.includes(myName)) {
   document.getElementById("chat").style.display = "none";
