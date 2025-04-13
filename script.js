@@ -8,6 +8,7 @@ let timeoutInterval = null;
 const DOM = {
   input: document.getElementById("input"),
   form: document.getElementById("form"),
+  fileInput: document.getElementById("fileInput"),
   messages: document.getElementById("messages"),
   membersCount: document.getElementById("members-count"),
   timeoutScreen: document.getElementById("timeout-screen"),
@@ -62,19 +63,33 @@ DOM.form.addEventListener("submit", e => {
   }
 
   const text = DOM.input.value.trim();
-  if (!text) return;
+  const file = DOM.fileInput.files[0];
+
+  if (!text && !file) return;
 
   if ((text.startsWith("/kick ") || text.startsWith("/ban ") || text.startsWith("/timeout ")) && !isMod) {
     alert("Only moderators can use this command.");
     return;
   }
 
-  drone.publish({
-    room: "observable-room",
-    message: { type: "text", content: text }
-  });
+  if (file && file.type.startsWith("image/")) {
+    resizeImage(file, base64 => {
+      drone.publish({
+        room: "observable-room",
+        message: { type: "image", content: base64 }
+      });
+    });
+  }
+
+  if (text) {
+    drone.publish({
+      room: "observable-room",
+      message: { type: "text", content: text }
+    });
+  }
 
   DOM.input.value = "";
+  DOM.fileInput.value = "";
 });
 
 let members = [];
@@ -103,32 +118,21 @@ drone.on("open", error => {
 
     const sender = member.clientData.name;
     const isSenderMod = member.clientData.mod;
-    const msg = message.content;
+    const modTag = isSenderMod ? ' <span class="mod">[MOD]</span>' : '';
 
     if (message.type === "text") {
-      if (msg.startsWith("/kick ") && isSenderMod) {
-        const target = msg.split(" ")[1];
-        if (target === myName) {
-          kicked = true;
-          document.getElementById("chat-container").style.display = "none";
-          document.getElementById("kicked-screen").style.display = "block";
-        }
-        return;
-      }
-
-      if (msg.startsWith("/ban ") && isSenderMod) {
-        const target = msg.split(" ")[1];
-        if (target === myName && userIP) {
-          bannedIPs.push(userIP);
-          localStorage.setItem("bannedIPs", JSON.stringify(bannedIPs));
-          document.getElementById("chat-container").style.display = "none";
-          document.getElementById("banned-screen").style.display = "block";
-        }
-        return;
-      }
-
-      if (msg.startsWith("/timeout ") && isSenderMod) {
-        const parts = msg.split(" ");
+      const msg = `${sender}${modTag}: ${message.content}`;
+      if (message.content.startsWith("/kick ") && isSenderMod && message.content.split(" ")[1] === myName) {
+        kicked = true;
+        document.getElementById("chat-container").style.display = "none";
+        document.getElementById("kicked-screen").style.display = "block";
+      } else if (message.content.startsWith("/ban ") && isSenderMod && message.content.split(" ")[1] === myName) {
+        bannedIPs.push(userIP);
+        localStorage.setItem("bannedIPs", JSON.stringify(bannedIPs));
+        document.getElementById("chat-container").style.display = "none";
+        document.getElementById("banned-screen").style.display = "block";
+      } else if (message.content.startsWith("/timeout ") && isSenderMod) {
+        const parts = message.content.split(" ");
         const target = parts[1];
         const minutes = parseInt(parts[2]);
         if (target === myName && minutes > 0) {
@@ -137,14 +141,38 @@ drone.on("open", error => {
           localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
           startTimeoutFromStorage(endTime);
         }
-        return;
+      } else {
+        addMessage(msg);
       }
-
-      const modTag = member.clientData.mod ? ' <span class="message mod">[MOD]</span>' : '';
-      addMessage(`${sender}${modTag}: ${msg}`);
+    } else if (message.type === "image") {
+      const div = document.createElement("div");
+      div.className = "message";
+      div.innerHTML = `<strong>${sender}${modTag}:</strong><br><img src="${message.content}" alt="image">`;
+      DOM.messages.appendChild(div);
+      DOM.messages.scrollTop = DOM.messages.scrollHeight;
     }
   });
 });
+
+function resizeImage(file, callback) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const height = 300;
+      const width = img.width / img.height * height;
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+      const base64 = canvas.toDataURL(file.type || "image/jpeg", 0.8);
+      callback(base64);
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
 
 function updateMemberCount() {
   DOM.membersCount.textContent = `${members.length} members online`;
@@ -173,7 +201,6 @@ function startTimeoutFromStorage(endTime) {
       clearInterval(timeoutInterval);
       DOM.input.disabled = false;
       DOM.timeoutScreen.style.display = "none";
-
       delete storedTimeouts[userIP];
       localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
     }
