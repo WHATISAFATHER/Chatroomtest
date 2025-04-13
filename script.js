@@ -51,9 +51,8 @@ const DOM = {
 DOM.form.addEventListener("submit", e => {
   e.preventDefault();
 
-  const now = Date.now();
-  if (now < timeoutEnd) {
-    alert("You are timed out!");
+  if (Date.now() < timeoutEnd) {
+    alert("You are timed out and cannot type yet.");
     return;
   }
 
@@ -128,14 +127,14 @@ drone.on("open", error => {
         const target = parts[1];
         const minutes = parseInt(parts[2]);
         if (target === myName && minutes > 0) {
-          timeoutEnd = Date.now() + minutes * 60000;
-          startTimeoutCountdown(minutes);
+          timeoutEnd = Date.now() + minutes * 60 * 1000;
+          startTimeout(minutes * 60); // seconds
         }
         return;
       }
 
-      const modLabel = member.clientData.mod ? ' <span class="message mod">[MOD]</span>' : '';
-      addMessage(`${sender}${modLabel}: ${msg}`);
+      const modTag = member.clientData.mod ? ' <span class="message mod">[MOD]</span>' : '';
+      addMessage(`${sender}${modTag}: ${msg}`);
     }
   });
 });
@@ -152,27 +151,24 @@ function addMessage(text) {
   DOM.messages.scrollTop = DOM.messages.scrollHeight;
 }
 
-function startTimeoutCountdown(minutes) {
-  DOM.timeoutScreen.style.display = "block";
+function startTimeout(seconds) {
+  clearInterval(timeoutInterval);
   DOM.input.disabled = true;
-  let secondsLeft = minutes * 60;
+  DOM.timeoutScreen.style.display = "block";
+  updateTimer(seconds);
 
-  updateTimerDisplay(secondsLeft);
-
-  if (timeoutInterval) clearInterval(timeoutInterval);
   timeoutInterval = setInterval(() => {
-    secondsLeft--;
-    updateTimerDisplay(secondsLeft);
-
-    if (secondsLeft <= 0) {
+    seconds--;
+    updateTimer(seconds);
+    if (seconds <= 0) {
       clearInterval(timeoutInterval);
-      DOM.timeoutScreen.style.display = "none";
       DOM.input.disabled = false;
+      DOM.timeoutScreen.style.display = "none";
     }
   }, 1000);
 }
 
-function updateTimerDisplay(seconds) {
+function updateTimer(seconds) {
   const min = Math.floor(seconds / 60);
   const sec = seconds % 60;
   DOM.timeoutTimer.textContent = `${min}:${sec.toString().padStart(2, "0")}`;
