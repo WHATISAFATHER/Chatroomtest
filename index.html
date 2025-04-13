@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Education Chat</title>
+  <meta charset="UTF-8">
+  <title>Chat with Mod Commands</title>
   <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
   <style>
     body {
       font-family: sans-serif;
-      background: #f0f0f0;
+      background-color: #f0f0f0;
       padding: 20px;
       text-align: center;
     }
@@ -20,8 +20,8 @@
       border-radius: 10px;
     }
 
-    .member {
-      margin: 5px 0;
+    .members {
+      margin: 10px 0;
     }
 
     .messages {
@@ -29,7 +29,7 @@
       overflow-y: auto;
       background: #eee;
       padding: 10px;
-      margin-bottom: 10px;
+      margin: 10px 0;
       border-radius: 8px;
     }
 
@@ -46,33 +46,31 @@
       padding: 10px;
     }
 
-    .kicked, .banned {
+    #kicked, #banned {
       display: none;
-      font-size: 20px;
       color: red;
-      margin-top: 30px;
+      font-size: 20px;
+      margin-top: 40px;
     }
   </style>
 </head>
 <body>
 
   <div class="container" id="chat">
-    <h2>Education Chat</h2>
-    <div class="members-count">0 online</div>
-    <div class="members-list"></div>
-
+    <h2>Chat Room</h2>
+    <div class="members" id="members"></div>
     <div class="messages" id="messages"></div>
 
-    <form class="message-form">
-      <input class="message-input" placeholder="Type..." />
+    <form class="message-form" id="form">
+      <input id="input" placeholder="Type message or command..." />
       <button type="submit">Send</button>
     </form>
 
-    <button id="mod-login">Sign in as Moderator</button>
+    <button onclick="modLogin()">Sign in as Mod</button>
   </div>
 
-  <div class="kicked" id="kicked">You have been kicked.</div>
-  <div class="banned" id="banned">You are banned from this chat.</div>
+  <div id="kicked">You were kicked.</div>
+  <div id="banned">You are banned from this chat.</div>
 
   <script src="script.js"></script>
 </body>
