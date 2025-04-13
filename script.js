@@ -1,6 +1,5 @@
 const CLIENT_ID = 'YwlHBeKbieWWPeOS';
 const myName = "user_" + Math.floor(Math.random() * 10000);
-
 let isMod = sessionStorage.getItem("isMod") === "true";
 let kicked = false;
 
@@ -11,17 +10,15 @@ if (bannedNames.includes(myName)) {
   throw new Error("User is banned.");
 }
 
-if (isMod) {
-  document.getElementById("mod-login").style.display = "none";
-}
+const modButton = document.getElementById("mod-login");
+if (isMod) modButton.style.display = "none";
 
-document.getElementById("mod-login").addEventListener("click", () => {
+modButton.addEventListener("click", () => {
   const u = prompt("Enter mod username:");
   const p = prompt("Enter mod password:");
   if (u === "admin" && p === "letmein") {
     sessionStorage.setItem("isMod", "true");
-    alert("You're now a moderator. Reloading...");
-    location.reload(); // force reconnect with mod status
+    location.reload();
   } else {
     alert("Wrong username or password.");
   }
