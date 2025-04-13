@@ -1,191 +1,187 @@
 const CLIENT_ID = 'YwlHBeKbieWWPeOS';
+const myName = "user_" + Math.floor(Math.random() * 10000);
+let isMod = sessionStorage.getItem("isMod") === "true";
+let kicked = false;
+let userIP = null;
+let timeoutInterval = null;
+
+const DOM = {
+  input: document.getElementById("input"),
+  form: document.getElementById("form"),
+  messages: document.getElementById("messages"),
+  membersCount: document.getElementById("members-count"),
+  timeoutScreen: document.getElementById("timeout-screen"),
+  timeoutTimer: document.getElementById("timeout-timer")
+};
+
+const bannedIPs = JSON.parse(localStorage.getItem("bannedIPs") || "[]");
+const storedTimeouts = JSON.parse(localStorage.getItem("timeouts") || "{}");
+
+fetch("https://api.ipify.org?format=json")
+  .then(res => res.json())
+  .then(data => {
+    userIP = data.ip;
+
+    if (bannedIPs.includes(userIP)) {
+      document.getElementById("chat-container").style.display = "none";
+      document.getElementById("banned-screen").style.display = "block";
+      throw new Error("Banned IP");
+    }
+
+    if (storedTimeouts[userIP] && Date.now() < storedTimeouts[userIP]) {
+      startTimeoutFromStorage(storedTimeouts[userIP]);
+    }
+  });
+
+if (isMod) {
+  document.getElementById("mod-login").style.display = "none";
+}
+
+document.getElementById("mod-login").addEventListener("click", () => {
+  const u = prompt("Enter mod username:");
+  const p = prompt("Enter mod password:");
+  if (u === "admin" && p === "letmein") {
+    sessionStorage.setItem("isMod", "true");
+    alert("You're now a moderator. Reloading...");
+    location.reload();
+  } else {
+    alert("Wrong credentials.");
+  }
+});
 
 const drone = new ScaleDrone(CLIENT_ID, {
-  data: {
-    name: getRandomName(),
-    color: getRandomColor(),
-  },
+  data: { name: myName, mod: isMod }
+});
+
+DOM.form.addEventListener("submit", e => {
+  e.preventDefault();
+
+  if (DOM.input.disabled) {
+    alert("You are currently timed out.");
+    return;
+  }
+
+  const text = DOM.input.value.trim();
+  if (!text) return;
+
+  if ((text.startsWith("/kick ") || text.startsWith("/ban ") || text.startsWith("/timeout ")) && !isMod) {
+    alert("Only moderators can use this command.");
+    return;
+  }
+
+  drone.publish({
+    room: "observable-room",
+    message: { type: "text", content: text }
+  });
+
+  DOM.input.value = "";
 });
 
 let members = [];
 
-const DOM = {
-  membersCount: document.querySelector('.members-count'),
-  membersList: document.querySelector('.members-list'),
-  messages: document.querySelector('.messages'),
-  input: document.querySelector('.message-form__input'),
-  form: document.querySelector('.message-form'),
-};
-
-DOM.form.addEventListener('submit', sendMessage);
-
-let canSend = true;
-
-function sendMessage(event) {
-  event.preventDefault();
-
-  if (!canSend) return;
-
-  const message = DOM.input.value.trim();
-  const fileInput = DOM.form.querySelector('.message-form__file');
-  const file = fileInput.files[0];
-
-  if (!message && !file) return;
-
-  canSend = false;
-
-  if (file && file.type.startsWith('image/')) {
-    sendImageMessage(file);
-  }
-
-  if (message) {
-    sendTextMessage(message);
-  }
-
-  DOM.input.value = '';
-  fileInput.value = '';
-
-  setTimeout(() => {
-    canSend = true;
-  }, 1000);
-}
-
-function sendTextMessage(text) {
-  drone.publish({
-    room: 'observable-room',
-    message: { type: 'text', content: text },
-  });
-}
-
-function resizeImage(file, callback) {
-  const reader = new FileReader();
-
-  reader.onloadend = function () {
-    const img = new Image();
-
-    img.onload = function () {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const wantHeight = 300;
-      const ratio = img.width / img.height;
-      const widthCalc = ratio * wantHeight;
-      canvas.width = widthCalc;
-      canvas.height = wantHeight;
-
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      const mime = file.type || 'image/jpeg';
-      const resizedBase64 = canvas.toDataURL(mime, 0.8);
-      callback(resizedBase64);
-    };
-
-    img.src = reader.result;
-  };
-
-  reader.readAsDataURL(file);
-}
-
-function sendImageMessage(file) {
-  resizeImage(file, function (resizedBase64) {
-    drone.publish({
-      room: 'observable-room',
-      message: { type: 'image', content: resizedBase64 },
-    });
-  });
-}
-
-function createMemberElement(member) {
-  const { name, color } = member.clientData;
-  const el = document.createElement('div');
-  el.appendChild(document.createTextNode(name));
-  el.className = 'member';
-  el.style.color = color;
-  return el;
-}
-
-function updateMembersDOM() {
-  DOM.membersCount.innerText = `${members.length} users in room:`;
-  DOM.membersList.innerHTML = '';
-  members.forEach(member =>
-    DOM.membersList.appendChild(createMemberElement(member))
-  );
-}
-
-function createMessageElement(text, member) {
-  const el = document.createElement('div');
-  const { name, color } = member.clientData;
-
-  if (text.type === 'text') {
-    el.className = 'message';
-    el.appendChild(createMemberElement(member));
-    el.appendChild(document.createTextNode(text.content));
-  } else if (text.type === 'image') {
-    const img = document.createElement('img');
-    img.src = text.content;
-    el.className = 'message image-message';
-    el.appendChild(createMemberElement(member));
-    el.appendChild(img);
-  }
-
-  return el;
-}
-
-function addMessageToListDOM(text, member) {
-  const el = DOM.messages;
-  const wasTop = el.scrollTop === el.scrollHeight - el.clientHeight;
-  el.appendChild(createMessageElement(text, member));
-  if (wasTop) {
-    el.scrollTop = el.scrollHeight - el.clientHeight;
-  }
-}
-
-drone.on('open', error => {
+drone.on("open", error => {
   if (error) return console.error(error);
+  const room = drone.subscribe("observable-room");
 
-  const room = drone.subscribe('observable-room');
-
-  room.on('open', error => {
-    if (error) return console.error(error);
-    console.log('Successfully joined room');
-  });
-
-  room.on('members', m => {
+  room.on("members", m => {
     members = m;
-    updateMembersDOM();
+    updateMemberCount();
   });
 
-  room.on('member_join', member => {
+  room.on("member_join", member => {
     members.push(member);
-    updateMembersDOM();
+    updateMemberCount();
   });
 
-  room.on('member_leave', ({ id }) => {
-    const index = members.findIndex(member => member.id === id);
-    members.splice(index, 1);
-    updateMembersDOM();
+  room.on("member_leave", ({ id }) => {
+    members = members.filter(m => m.id !== id);
+    updateMemberCount();
   });
 
-  room.on('data', (text, member) => {
-    if (member) {
-      addMessageToListDOM(text, member);
+  room.on("data", (message, member) => {
+    if (!member || kicked) return;
+
+    const sender = member.clientData.name;
+    const isSenderMod = member.clientData.mod;
+    const msg = message.content;
+
+    if (message.type === "text") {
+      if (msg.startsWith("/kick ") && isSenderMod) {
+        const target = msg.split(" ")[1];
+        if (target === myName) {
+          kicked = true;
+          document.getElementById("chat-container").style.display = "none";
+          document.getElementById("kicked-screen").style.display = "block";
+        }
+        return;
+      }
+
+      if (msg.startsWith("/ban ") && isSenderMod) {
+        const target = msg.split(" ")[1];
+        if (target === myName && userIP) {
+          bannedIPs.push(userIP);
+          localStorage.setItem("bannedIPs", JSON.stringify(bannedIPs));
+          document.getElementById("chat-container").style.display = "none";
+          document.getElementById("banned-screen").style.display = "block";
+        }
+        return;
+      }
+
+      if (msg.startsWith("/timeout ") && isSenderMod) {
+        const parts = msg.split(" ");
+        const target = parts[1];
+        const minutes = parseInt(parts[2]);
+        if (target === myName && minutes > 0) {
+          const endTime = Date.now() + minutes * 60000;
+          storedTimeouts[userIP] = endTime;
+          localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
+          startTimeoutFromStorage(endTime);
+        }
+        return;
+      }
+
+      const modTag = member.clientData.mod ? ' <span class="message mod">[MOD]</span>' : '';
+      addMessage(`${sender}${modTag}: ${msg}`);
     }
   });
 });
 
-drone.on('close', event => {
-  console.log('Connection was closed', event);
-});
-
-drone.on('error', error => {
-  console.error(error);
-});
-
-function getRandomName() {
-  const adjs = ["funny", "fast", "happy", "cool"];
-  const nouns = ["panda", "cloud", "moon", "star"];
-  return adjs[Math.floor(Math.random() * adjs.length)] + "_" + nouns[Math.floor(Math.random() * nouns.length)];
+function updateMemberCount() {
+  DOM.membersCount.textContent = `${members.length} members online`;
 }
 
-function getRandomColor() {
-  return '#' + Math.floor(Math.random() * 0xFFFFFF).toString(16);
+function addMessage(text) {
+  const msg = document.createElement("div");
+  msg.className = "message";
+  msg.innerHTML = text;
+  DOM.messages.appendChild(msg);
+  DOM.messages.scrollTop = DOM.messages.scrollHeight;
+}
+
+function startTimeoutFromStorage(endTime) {
+  const duration = Math.floor((endTime - Date.now()) / 1000);
+  DOM.input.disabled = true;
+  DOM.timeoutScreen.style.display = "block";
+  updateTimer(duration);
+
+  clearInterval(timeoutInterval);
+  timeoutInterval = setInterval(() => {
+    const remaining = Math.floor((endTime - Date.now()) / 1000);
+    updateTimer(remaining);
+
+    if (remaining <= 0) {
+      clearInterval(timeoutInterval);
+      DOM.input.disabled = false;
+      DOM.timeoutScreen.style.display = "none";
+
+      delete storedTimeouts[userIP];
+      localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
+    }
+  }, 1000);
+}
+
+function updateTimer(seconds) {
+  const min = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  DOM.timeoutTimer.textContent = `${min}:${sec.toString().padStart(2, "0")}`;
 }
