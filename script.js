@@ -1,217 +1,125 @@
+const bannedNames = JSON.parse(localStorage.getItem("bannedUsers") || "[]");
+const myName = "user_" + Math.floor(Math.random() * 1000);
 let isMod = false;
-let userName = "";
 let kicked = false;
 
-// Load ban list from browser storage
-const bannedNames = JSON.parse(localStorage.getItem("bannedUsers") || "[]");
-
-function banUser(name) {
-  if (!bannedNames.includes(name)) {
-    bannedNames.push(name);
-    localStorage.setItem("bannedUsers", JSON.stringify(bannedNames));
-  }
+if (bannedNames.includes(myName)) {
+  document.getElementById("chat").style.display = "none";
+  document.getElementById("banned").style.display = "block";
+  throw new Error("Banned");
 }
 
-// Mod login button
-document.getElementById("mod-login").addEventListener("click", () => {
-  const inputUser = prompt("Enter mod username:");
-  const inputPass = prompt("Enter mod password:");
-  if (inputUser === "admin" && inputPass === "letmein") {
+document.getElementById("mod-login").onclick = () => {
+  const u = prompt("Username:");
+  const p = prompt("Password:");
+  if (u === "admin" && p === "letmein") {
     isMod = true;
-    sessionStorage.setItem("isMod", "true");
-    alert("You are now logged in as a moderator.");
+    alert("Mod access granted. Reloading...");
     location.reload();
   } else {
-    alert("Incorrect username or password.");
+    alert("Incorrect.");
   }
-});
+};
 
-// Restore mod status after reload
-if (sessionStorage.getItem("isMod") === "true") {
-  isMod = true;
-}
-
-// Get random name and check ban status
-userName = getRandomName();
-
-if (bannedNames.includes(userName)) {
-  document.body.innerHTML = `<div style="text-align:center; margin-top:50px;"><h1>You are banned from this chat.</h1></div>`;
-  throw new Error("Banned user.");
-}
-
-// Connect to Scaledrone
 const CLIENT_ID = 'YwlHBeKbieWWPeOS';
 const drone = new ScaleDrone(CLIENT_ID, {
-  data: {
-    name: userName,
-    color: getRandomColor(),
-    mod: isMod
-  },
+  data: { name: myName, mod: isMod }
 });
 
 let members = [];
 
-// Create member element in member list
-function createMemberElement(member) {
-  const { name, color, mod } = member.clientData;
-  const el = document.createElement('div');
-  el.className = 'member';
-  el.style.color = color;
-  el.textContent = name;
+const DOM = {
+  membersCount: document.querySelector('.members-count'),
+  membersList: document.querySelector('.members-list'),
+  messages: document.getElementById("messages"),
+  input: document.querySelector('.message-input'),
+  form: document.querySelector('.message-form')
+};
 
-  // Add MOD badge
-  if (mod) {
-    el.innerHTML += ' <span style="color:red; font-weight:bold;">[MOD]</span>';
-  }
-
-  // Add Kick and Ban buttons if you're a mod
-  if (isMod && name !== drone.clientData.name) {
-    const kickBtn = document.createElement('button');
-    kickBtn.textContent = "Kick";
-    kickBtn.style.marginLeft = "10px";
-    kickBtn.onclick = () => {
-      sendTextMessage(`/kick ${name}`);
-    };
-
-    const banBtn = document.createElement('button');
-    banBtn.textContent = "Ban";
-    banBtn.style.marginLeft = "5px";
-    banBtn.onclick = () => {
-      sendTextMessage(`/ban ${name}`);
-    };
-
-    el.appendChild(kickBtn);
-    el.appendChild(banBtn);
-  }
-
-  return el;
-}
-
-// Update member list on screen
-function updateMembersDOM() {
-  DOM.membersCount.innerText = `${members.length} users in room:`;
-  DOM.membersList.innerHTML = '';
-  members.forEach(member => {
-    DOM.membersList.appendChild(createMemberElement(member));
-  });
-}
-
-// Setup Scaledrone room events
 drone.on('open', error => {
   if (error) return console.error(error);
-
   const room = drone.subscribe('observable-room');
-  room.on('open', error => {
-    if (error) return console.error(error);
-    console.log("Joined room");
-  });
 
   room.on('members', m => {
     members = m;
-    updateMembersDOM();
+    updateMembers();
   });
 
   room.on('member_join', member => {
     members.push(member);
-    updateMembersDOM();
+    updateMembers();
   });
 
   room.on('member_leave', ({ id }) => {
-    const index = members.findIndex(member => member.id === id);
-    members.splice(index, 1);
-    updateMembersDOM();
+    members = members.filter(m => m.id !== id);
+    updateMembers();
   });
 
-  room.on('data', (text, member) => {
+  room.on('data', (msg, member) => {
     if (!member || kicked) return;
 
-    const msg = text.content;
-    const senderIsMod = member.clientData.mod;
-
-    if (text.type === 'text') {
-      if (msg.startsWith("/kick ")) {
-        const target = msg.split(" ")[1];
-        if (senderIsMod && target === drone.clientData.name) {
+    if (msg.type === 'text') {
+      if (msg.content.startsWith("/kick ") && member.clientData.mod) {
+        const target = msg.content.split(" ")[1];
+        if (target === myName) {
           kicked = true;
-          document.querySelector(".container").style.display = "none";
-          document.getElementById("mod-login").style.display = "none";
-          document.getElementById("kicked-screen").style.display = "block";
-        }
-        return;
-      }
-
-      if (msg.startsWith("/ban ")) {
-        const target = msg.split(" ")[1];
-        if (senderIsMod && target === drone.clientData.name) {
-          banUser(target);
-          document.body.innerHTML = `<div style="text-align:center; margin-top:50px;"><h1>You are banned from this chat.</h1></div>`;
+          document.getElementById("chat").style.display = "none";
+          document.getElementById("kicked").style.display = "block";
           return;
         }
       }
-    }
 
-    addMessageToListDOM(text, member);
+      if (msg.content.startsWith("/ban ") && member.clientData.mod) {
+        const target = msg.content.split(" ")[1];
+        if (target === myName) {
+          bannedNames.push(myName);
+          localStorage.setItem("bannedUsers", JSON.stringify(bannedNames));
+          document.getElementById("chat").style.display = "none";
+          document.getElementById("banned").style.display = "block";
+          return;
+        }
+      }
+
+      addMessage(msg.content, member.clientData.name);
+    }
   });
 });
 
-const DOM = {
-  membersCount: document.querySelector('.members-count'),
-  membersList: document.querySelector('.members-list'),
-  messages: document.querySelector('.messages'),
-  input: document.querySelector('.message-form__input'),
-  form: document.querySelector('.message-form'),
+DOM.form.onsubmit = e => {
+  e.preventDefault();
+  const msg = DOM.input.value.trim();
+  if (!msg) return;
+  drone.publish({ room: 'observable-room', message: { type: 'text', content: msg } });
+  DOM.input.value = '';
 };
 
-DOM.form.addEventListener('submit', sendMessage);
+function updateMembers() {
+  DOM.membersCount.textContent = `${members.length} online`;
+  DOM.membersList.innerHTML = '';
+  members.forEach(member => {
+    const el = document.createElement('div');
+    el.className = 'member';
+    el.textContent = member.clientData.name + (member.clientData.mod ? ' [MOD]' : '');
 
-// Send a chat message
-function sendMessage(event) {
-  event.preventDefault();
-  const text = DOM.input.value.trim();
-  if (text) sendTextMessage(text);
-  DOM.input.value = '';
-}
+    if (isMod && member.clientData.name !== myName) {
+      const kick = document.createElement('button');
+      kick.textContent = "Kick";
+      kick.onclick = () => drone.publish({ room: 'observable-room', message: { type: 'text', content: `/kick ${member.clientData.name}` } });
 
-// Publish to Scaledrone
-function sendTextMessage(text) {
-  drone.publish({
-    room: 'observable-room',
-    message: { type: 'text', content: text },
+      const ban = document.createElement('button');
+      ban.textContent = "Ban";
+      ban.onclick = () => drone.publish({ room: 'observable-room', message: { type: 'text', content: `/ban ${member.clientData.name}` } });
+
+      el.append(" ", kick, ban);
+    }
+
+    DOM.membersList.appendChild(el);
   });
 }
 
-// Random name and color generators
-function getRandomName() {
-  const adjs = ["cool", "brave", "quiet", "wild", "happy"];
-  const nouns = ["tiger", "rainbow", "star", "cloud", "river"];
-  return adjs[Math.floor(Math.random() * adjs.length)] + "_" +
-         nouns[Math.floor(Math.random() * nouns.length)];
-}
-
-function getRandomColor() {
-  return '#' + Math.floor(Math.random() * 0xFFFFFF).toString(16);
-}
-
-// Create chat message element
-function createMessageElement(text, member) {
-  const el = document.createElement('div');
-  const { name, color } = member.clientData;
-  el.className = 'message';
-
-  const nameEl = document.createElement('span');
-  nameEl.className = 'member';
-  nameEl.style.color = color;
-  nameEl.textContent = name + ": ";
-
-  el.appendChild(nameEl);
-  el.appendChild(document.createTextNode(text.content));
-  return el;
-}
-
-// Display message in chat window
-function addMessageToListDOM(text, member) {
-  const el = DOM.messages;
-  const wasAtBottom = el.scrollTop === el.scrollHeight - el.clientHeight;
-  el.appendChild(createMessageElement(text, member));
-  if (wasAtBottom) el.scrollTop = el.scrollHeight - el.clientHeight;
+function addMessage(text, sender) {
+  const msg = document.createElement('div');
+  msg.textContent = `${sender}: ${text}`;
+  DOM.messages.appendChild(msg);
+  DOM.messages.scrollTop = DOM.messages.scrollHeight;
 }
