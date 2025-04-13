@@ -1,121 +1,122 @@
-const bannedNames = JSON.parse(localStorage.getItem("bannedUsers") || "[]");
-const myName = "user_" + Math.floor(Math.random() * 10000);
+const CLIENT_ID = 'YwlHBeKbieWWPeOS';
 let isMod = false;
 let kicked = false;
 
-const CLIENT_ID = 'YwlHBeKbieWWPeOS';
+const myName = "user_" + Math.floor(Math.random() * 10000);
+const bannedNames = JSON.parse(localStorage.getItem("bannedUsers") || "[]");
 
 if (bannedNames.includes(myName)) {
-  document.getElementById("chat").style.display = "none";
-  document.getElementById("banned").style.display = "block";
-  throw new Error("Banned");
+  document.getElementById("chat-container").style.display = "none";
+  document.getElementById("banned-screen").style.display = "block";
+  throw new Error("You are banned");
 }
 
-function modLogin() {
-  const u = prompt("Username:");
-  const p = prompt("Password:");
+document.getElementById("mod-login").addEventListener("click", () => {
+  const u = prompt("Enter username:");
+  const p = prompt("Enter password:");
   if (u === "admin" && p === "letmein") {
     isMod = true;
-    alert("Mod access granted.");
+    document.getElementById("mod-login").style.display = "none";
+    alert("You are now a moderator.");
   } else {
-    alert("Wrong credentials.");
+    alert("Incorrect credentials.");
   }
-}
+});
 
 const drone = new ScaleDrone(CLIENT_ID, {
-  data: { name: myName, mod: isMod }
+  data: {
+    name: myName,
+    mod: isMod
+  }
 });
-
-let members = [];
-const roomName = "observable-room";
 
 const DOM = {
-  members: document.getElementById("members"),
-  messages: document.getElementById("messages"),
   input: document.getElementById("input"),
-  form: document.getElementById("form")
+  form: document.getElementById("form"),
+  messages: document.getElementById("messages"),
+  membersCount: document.getElementById("members-count")
 };
-
-drone.on("open", error => {
-  if (error) return console.error(error);
-  const room = drone.subscribe(roomName);
-
-  room.on("members", m => {
-    members = m;
-    updateMembers();
-  });
-
-  room.on("member_join", member => {
-    members.push(member);
-    updateMembers();
-  });
-
-  room.on("member_leave", ({ id }) => {
-    members = members.filter(m => m.id !== id);
-    updateMembers();
-  });
-
-  room.on("data", (message, member) => {
-    if (!member || kicked) return;
-
-    const sender = member.clientData.name;
-    const isSenderMod = member.clientData.mod;
-
-    if (message.type === "text") {
-      const content = message.content;
-
-      if (content.startsWith("/kick ") && isSenderMod) {
-        const target = content.split(" ")[1];
-        if (target === myName) {
-          kicked = true;
-          document.getElementById("chat").style.display = "none";
-          document.getElementById("kicked").style.display = "block";
-        }
-        return;
-      }
-
-      if (content.startsWith("/ban ") && isSenderMod) {
-        const target = content.split(" ")[1];
-        if (target === myName) {
-          bannedNames.push(myName);
-          localStorage.setItem("bannedUsers", JSON.stringify(bannedNames));
-          document.getElementById("chat").style.display = "none";
-          document.getElementById("banned").style.display = "block";
-        }
-        return;
-      }
-
-      addMessage(`${sender}: ${content}`);
-    }
-  });
-});
 
 DOM.form.addEventListener("submit", e => {
   e.preventDefault();
   const text = DOM.input.value.trim();
   if (!text) return;
 
-  if (text.startsWith("/kick ") || text.startsWith("/ban ")) {
-    if (!isMod) {
-      alert("Only mods can use commands.");
-      return;
-    }
+  if ((text.startsWith("/kick ") || text.startsWith("/ban ")) && !isMod) {
+    alert("You must be a moderator to use commands.");
+    return;
   }
 
   drone.publish({
-    room: roomName,
+    room: "observable-room",
     message: { type: "text", content: text }
   });
 
   DOM.input.value = "";
 });
 
-function updateMembers() {
-  DOM.members.innerHTML = `${members.length} users online`;
+let members = [];
+
+drone.on('open', error => {
+  if (error) return console.error(error);
+
+  const room = drone.subscribe("observable-room");
+
+  room.on("members", m => {
+    members = m;
+    updateMemberCount();
+  });
+
+  room.on("member_join", member => {
+    members.push(member);
+    updateMemberCount();
+  });
+
+  room.on("member_leave", ({ id }) => {
+    members = members.filter(m => m.id !== id);
+    updateMemberCount();
+  });
+
+  room.on("data", (message, member) => {
+    if (!member || kicked) return;
+    const sender = member.clientData.name;
+    const isSenderMod = member.clientData.mod;
+    const msg = message.content;
+
+    if (message.type === "text") {
+      if (msg.startsWith("/kick ") && isSenderMod) {
+        const target = msg.split(" ")[1];
+        if (target === myName) {
+          kicked = true;
+          document.getElementById("chat-container").style.display = "none";
+          document.getElementById("kicked-screen").style.display = "block";
+        }
+        return;
+      }
+
+      if (msg.startsWith("/ban ") && isSenderMod) {
+        const target = msg.split(" ")[1];
+        if (target === myName) {
+          bannedNames.push(myName);
+          localStorage.setItem("bannedUsers", JSON.stringify(bannedNames));
+          document.getElementById("chat-container").style.display = "none";
+          document.getElementById("banned-screen").style.display = "block";
+        }
+        return;
+      }
+
+      addMessage(`${sender}: ${msg}`);
+    }
+  });
+});
+
+function updateMemberCount() {
+  DOM.membersCount.textContent = `${members.length} members online`;
 }
 
 function addMessage(text) {
   const msg = document.createElement("div");
+  msg.className = "message";
   msg.textContent = text;
   DOM.messages.appendChild(msg);
   DOM.messages.scrollTop = DOM.messages.scrollHeight;
