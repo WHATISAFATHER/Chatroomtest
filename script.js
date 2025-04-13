@@ -2,12 +2,27 @@ const CLIENT_ID = 'YwlHBeKbieWWPeOS';
 const myName = "user_" + Math.floor(Math.random() * 10000);
 let isMod = sessionStorage.getItem("isMod") === "true";
 let kicked = false;
+let userIP = null;
+
+// Fetch user's IP address
+fetch('https://api.ipify.org?format=json')
+  .then(res => res.json())
+  .then(data => {
+    userIP = data.ip;
+
+    const bannedIPs = JSON.parse(localStorage.getItem("bannedIPs") || "[]");
+    if (bannedIPs.includes(userIP)) {
+      document.getElementById("chat-container").style.display = "none";
+      document.getElementById("banned-screen").style.display = "block";
+      throw new Error("User is IP banned.");
+    }
+  });
 
 const bannedNames = JSON.parse(localStorage.getItem("bannedUsers") || "[]");
 if (bannedNames.includes(myName)) {
   document.getElementById("chat-container").style.display = "none";
   document.getElementById("banned-screen").style.display = "block";
-  throw new Error("User is banned.");
+  throw new Error("User is name banned.");
 }
 
 const modButton = document.getElementById("mod-login");
@@ -100,13 +115,21 @@ drone.on('open', error => {
         if (target === myName) {
           bannedNames.push(myName);
           localStorage.setItem("bannedUsers", JSON.stringify(bannedNames));
+
+          if (userIP) {
+            const bannedIPs = JSON.parse(localStorage.getItem("bannedIPs") || "[]");
+            bannedIPs.push(userIP);
+            localStorage.setItem("bannedIPs", JSON.stringify(bannedIPs));
+          }
+
           document.getElementById("chat-container").style.display = "none";
           document.getElementById("banned-screen").style.display = "block";
         }
         return;
       }
 
-      addMessage(`${sender}: ${msg}`);
+      const label = isSenderMod ? " [MOD]" : "";
+      addMessage(`${sender}${label}: ${msg}`);
     }
   });
 });
