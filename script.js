@@ -1,25 +1,29 @@
 const CLIENT_ID = 'YwlHBeKbieWWPeOS';
-let isMod = false;
+const myName = "user_" + Math.floor(Math.random() * 10000);
+
+let isMod = sessionStorage.getItem("isMod") === "true";
 let kicked = false;
 
-const myName = "user_" + Math.floor(Math.random() * 10000);
 const bannedNames = JSON.parse(localStorage.getItem("bannedUsers") || "[]");
-
 if (bannedNames.includes(myName)) {
   document.getElementById("chat-container").style.display = "none";
   document.getElementById("banned-screen").style.display = "block";
-  throw new Error("You are banned");
+  throw new Error("User is banned.");
+}
+
+if (isMod) {
+  document.getElementById("mod-login").style.display = "none";
 }
 
 document.getElementById("mod-login").addEventListener("click", () => {
-  const u = prompt("Enter username:");
-  const p = prompt("Enter password:");
+  const u = prompt("Enter mod username:");
+  const p = prompt("Enter mod password:");
   if (u === "admin" && p === "letmein") {
-    isMod = true;
-    document.getElementById("mod-login").style.display = "none";
-    alert("You are now a moderator.");
+    sessionStorage.setItem("isMod", "true");
+    alert("You're now a moderator. Reloading...");
+    location.reload(); // force reconnect with mod status
   } else {
-    alert("Incorrect credentials.");
+    alert("Wrong username or password.");
   }
 });
 
@@ -43,7 +47,7 @@ DOM.form.addEventListener("submit", e => {
   if (!text) return;
 
   if ((text.startsWith("/kick ") || text.startsWith("/ban ")) && !isMod) {
-    alert("You must be a moderator to use commands.");
+    alert("Only moderators can use this command.");
     return;
   }
 
