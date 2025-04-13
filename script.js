@@ -5,29 +5,26 @@ let kicked = false;
 let timeoutEnd = 0;
 let timeoutInterval = null;
 let userIP = null;
-
+let storedTimeouts = JSON.parse(localStorage.getItem("timeouts") || "{}");
 const bannedIPs = JSON.parse(localStorage.getItem("bannedIPs") || "[]");
 
-// Timeout storage
-const storedTimeouts = JSON.parse(localStorage.getItem("timeouts") || {});
-
+// Get IP address
 fetch("https://api.ipify.org?format=json")
   .then(res => res.json())
   .then(data => {
     userIP = data.ip;
 
-    // Check if IP is banned
+    // IP banned?
     if (bannedIPs.includes(userIP)) {
       document.getElementById("chat-container").style.display = "none";
       document.getElementById("banned-screen").style.display = "block";
       throw new Error("Banned IP");
     }
 
-    // Check if IP is in timeout
-    const end = storedTimeouts[userIP];
-    if (end && Date.now() < end) {
-      timeoutEnd = end;
-      const secondsLeft = Math.floor((end - Date.now()) / 1000);
+    // IP timed out?
+    if (storedTimeouts[userIP] && Date.now() < storedTimeouts[userIP]) {
+      timeoutEnd = storedTimeouts[userIP];
+      const secondsLeft = Math.floor((timeoutEnd - Date.now()) / 1000);
       startTimeout(secondsLeft);
     }
   });
@@ -179,8 +176,6 @@ function startTimeout(seconds) {
       clearInterval(timeoutInterval);
       DOM.input.disabled = false;
       DOM.timeoutScreen.style.display = "none";
-
-      // Remove stored timeout after completion
       delete storedTimeouts[userIP];
       localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
     }
