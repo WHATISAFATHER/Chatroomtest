@@ -5,9 +5,6 @@ let kicked = false;
 let userIP = null;
 let timeoutInterval = null;
 
-const bannedIPs = JSON.parse(localStorage.getItem("bannedIPs") || "[]");
-const storedTimeouts = JSON.parse(localStorage.getItem("timeouts") || "{}");
-
 const DOM = {
   input: document.getElementById("input"),
   form: document.getElementById("form"),
@@ -15,10 +12,12 @@ const DOM = {
   membersCount: document.getElementById("members-count"),
   timeoutScreen: document.getElementById("timeout-screen"),
   timeoutTimer: document.getElementById("timeout-timer"),
-  imageInput: document.getElementById("imageInput")
+  imageInput: document.getElementById("imageInput") // add image input reference
 };
 
-// Get IP address and enforce bans/timeouts
+const bannedIPs = JSON.parse(localStorage.getItem("bannedIPs") || "[]");
+const storedTimeouts = JSON.parse(localStorage.getItem("timeouts") || "{}");
+
 fetch("https://api.ipify.org?format=json")
   .then(res => res.json())
   .then(data => {
@@ -35,7 +34,9 @@ fetch("https://api.ipify.org?format=json")
     }
   });
 
-if (isMod) document.getElementById("mod-login").style.display = "none";
+if (isMod) {
+  document.getElementById("mod-login").style.display = "none";
+}
 
 document.getElementById("mod-login").addEventListener("click", () => {
   const u = prompt("Enter mod username:");
@@ -57,7 +58,7 @@ DOM.form.addEventListener("submit", e => {
   e.preventDefault();
 
   if (DOM.input.disabled) {
-    alert("You are timed out.");
+    alert("You are currently timed out.");
     return;
   }
 
@@ -66,21 +67,18 @@ DOM.form.addEventListener("submit", e => {
 
   if (!text && !file) return;
 
-  if (text.startsWith("/") && !isMod) {
-    alert("Only moderators can use commands.");
+  if ((text.startsWith("/kick ") || text.startsWith("/ban ") || text.startsWith("/timeout ")) && !isMod) {
+    alert("Only moderators can use this command.");
     return;
   }
 
   if (file && file.type.startsWith("image/")) {
-    const reader = new FileReader();
-    reader.onload = () => {
+    resizeImage(file, (resizedBase64) => {
       drone.publish({
         room: "observable-room",
-        message: { type: "image", content: reader.result }
+        message: { type: "image", content: resizedBase64 }
       });
-    };
-    reader.readAsDataURL(file);
-    DOM.imageInput.value = "";
+    });
   }
 
   if (text) {
@@ -88,8 +86,10 @@ DOM.form.addEventListener("submit", e => {
       room: "observable-room",
       message: { type: "text", content: text }
     });
-    DOM.input.value = "";
   }
+
+  DOM.input.value = "";
+  DOM.imageInput.value = "";
 });
 
 let members = [];
@@ -118,11 +118,11 @@ drone.on("open", error => {
 
     const sender = member.clientData.name;
     const isSenderMod = member.clientData.mod;
+    const modTag = isSenderMod ? ' <span class="message mod">[MOD]</span>' : '';
 
     if (message.type === "text") {
       const msg = message.content;
 
-      // Handle mod commands
       if (msg.startsWith("/kick ") && isSenderMod) {
         const target = msg.split(" ")[1];
         if (target === myName) {
@@ -149,27 +149,21 @@ drone.on("open", error => {
         const target = parts[1];
         const minutes = parseInt(parts[2]);
         if (target === myName && minutes > 0) {
-          const end = Date.now() + minutes * 60000;
-          storedTimeouts[userIP] = end;
+          const endTime = Date.now() + minutes * 60000;
+          storedTimeouts[userIP] = endTime;
           localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
-          startTimeoutFromStorage(end);
+          startTimeoutFromStorage(endTime);
         }
         return;
       }
 
-      const modTag = isSenderMod ? ' <span class="mod-tag">[MOD]</span>' : '';
       addMessage(`${sender}${modTag}: ${msg}`);
     }
 
     if (message.type === "image") {
       const div = document.createElement("div");
       div.className = "message";
-      const name = document.createElement("strong");
-      name.innerHTML = `${sender}${isSenderMod ? ' <span class="mod-tag">[MOD]</span>' : ''}:<br>`;
-      const img = document.createElement("img");
-      img.src = message.content;
-      div.appendChild(name);
-      div.appendChild(img);
+      div.innerHTML = `<strong>${sender}${modTag}:</strong><br><img src="${message.content}" alt="image" style="max-width:100%;border-radius:10px;">`;
       DOM.messages.appendChild(div);
       DOM.messages.scrollTop = DOM.messages.scrollHeight;
     }
@@ -180,28 +174,30 @@ function updateMemberCount() {
   DOM.membersCount.textContent = `${members.length} members online`;
 }
 
-function addMessage(html) {
+function addMessage(text) {
   const msg = document.createElement("div");
   msg.className = "message";
-  msg.innerHTML = html;
+  msg.innerHTML = text;
   DOM.messages.appendChild(msg);
   DOM.messages.scrollTop = DOM.messages.scrollHeight;
 }
 
-function startTimeoutFromStorage(end) {
-  const seconds = Math.floor((end - Date.now()) / 1000);
+function startTimeoutFromStorage(endTime) {
+  const duration = Math.floor((endTime - Date.now()) / 1000);
   DOM.input.disabled = true;
   DOM.timeoutScreen.style.display = "block";
-  updateTimer(seconds);
+  updateTimer(duration);
 
   clearInterval(timeoutInterval);
   timeoutInterval = setInterval(() => {
-    const remaining = Math.floor((end - Date.now()) / 1000);
+    const remaining = Math.floor((endTime - Date.now()) / 1000);
     updateTimer(remaining);
+
     if (remaining <= 0) {
       clearInterval(timeoutInterval);
       DOM.input.disabled = false;
       DOM.timeoutScreen.style.display = "none";
+
       delete storedTimeouts[userIP];
       localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
     }
@@ -212,4 +208,25 @@ function updateTimer(seconds) {
   const min = Math.floor(seconds / 60);
   const sec = seconds % 60;
   DOM.timeoutTimer.textContent = `${min}:${sec.toString().padStart(2, "0")}`;
+}
+
+function resizeImage(file, callback) {
+  const reader = new FileReader();
+  reader.onloadend = function () {
+    const img = new Image();
+    img.onload = function () {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const wantHeight = 300;
+      const ratio = img.width / img.height;
+      const width = wantHeight * ratio;
+      canvas.width = width;
+      canvas.height = wantHeight;
+      ctx.drawImage(img, 0, 0, width, wantHeight);
+      const base64 = canvas.toDataURL("image/jpeg", 0.7);
+      callback(base64);
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
 }
