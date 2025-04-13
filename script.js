@@ -1,4 +1,4 @@
-const CLIENT_ID = 'Ww9KIEXUL5KzVED0';
+const CLIENT_ID = 'YwlHBeKbieWWPeOS';
 const myName = "user_" + Math.floor(Math.random() * 10000);
 let isMod = sessionStorage.getItem("isMod") === "true";
 let kicked = false;
