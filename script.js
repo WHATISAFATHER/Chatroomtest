@@ -8,14 +8,27 @@ let userIP = null;
 
 const bannedIPs = JSON.parse(localStorage.getItem("bannedIPs") || "[]");
 
+// Timeout storage
+const storedTimeouts = JSON.parse(localStorage.getItem("timeouts") || {});
+
 fetch("https://api.ipify.org?format=json")
   .then(res => res.json())
   .then(data => {
     userIP = data.ip;
+
+    // Check if IP is banned
     if (bannedIPs.includes(userIP)) {
       document.getElementById("chat-container").style.display = "none";
       document.getElementById("banned-screen").style.display = "block";
       throw new Error("Banned IP");
+    }
+
+    // Check if IP is in timeout
+    const end = storedTimeouts[userIP];
+    if (end && Date.now() < end) {
+      timeoutEnd = end;
+      const secondsLeft = Math.floor((end - Date.now()) / 1000);
+      startTimeout(secondsLeft);
     }
   });
 
@@ -52,7 +65,7 @@ DOM.form.addEventListener("submit", e => {
   e.preventDefault();
 
   if (Date.now() < timeoutEnd) {
-    alert("You are timed out and cannot type yet.");
+    alert("You are timed out.");
     return;
   }
 
@@ -127,8 +140,10 @@ drone.on("open", error => {
         const target = parts[1];
         const minutes = parseInt(parts[2]);
         if (target === myName && minutes > 0) {
-          timeoutEnd = Date.now() + minutes * 60 * 1000;
-          startTimeout(minutes * 60); // seconds
+          timeoutEnd = Date.now() + minutes * 60000;
+          storedTimeouts[userIP] = timeoutEnd;
+          localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
+          startTimeout(minutes * 60);
         }
         return;
       }
@@ -164,6 +179,10 @@ function startTimeout(seconds) {
       clearInterval(timeoutInterval);
       DOM.input.disabled = false;
       DOM.timeoutScreen.style.display = "none";
+
+      // Remove stored timeout after completion
+      delete storedTimeouts[userIP];
+      localStorage.setItem("timeouts", JSON.stringify(storedTimeouts));
     }
   }, 1000);
 }
