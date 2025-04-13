@@ -14,6 +14,7 @@
       flex-direction: column;
       align-items: center;
     }
+
     .container {
       width: 100%;
       max-width: 600px;
@@ -24,6 +25,7 @@
       display: flex;
       flex-direction: column;
     }
+
     .header {
       background-color: #4caf50;
       color: white;
@@ -32,12 +34,14 @@
       font-size: 24px;
       font-weight: bold;
     }
+
     .members-count {
       font-size: 18px;
       padding: 10px;
       background-color: #e8f5e9;
       border-bottom: 2px solid #4caf50;
     }
+
     .messages {
       flex-grow: 1;
       padding: 15px;
@@ -45,21 +49,25 @@
       overflow-y: auto;
       height: 300px;
     }
+
     .message {
       margin-bottom: 10px;
       padding: 10px;
       border-radius: 10px;
       background-color: #e0f7fa;
     }
+
+    .message.mod {
+      color: red;
+      font-weight: bold;
+    }
+
     .message img {
       max-width: 100%;
       border-radius: 10px;
       margin-top: 5px;
     }
-    .message.mod {
-      color: red;
-      font-weight: bold;
-    }
+
     .message-form {
       display: flex;
       flex-wrap: wrap;
@@ -67,6 +75,7 @@
       border-top: 2px solid #4caf50;
       background-color: #f7fbfc;
     }
+
     .message-form__input {
       flex-grow: 1;
       padding: 10px;
@@ -76,10 +85,12 @@
       margin-right: 10px;
       margin-bottom: 10px;
     }
+
     .message-form__file {
       margin-right: 10px;
       margin-bottom: 10px;
     }
+
     .message-form__button {
       background-color: #4caf50;
       color: white;
@@ -89,10 +100,22 @@
       border-radius: 8px;
       cursor: pointer;
     }
+
+    #kicked-screen, #banned-screen, #timeout-screen {
+      display: none;
+      margin-top: 30px;
+      text-align: center;
+      font-size: 20px;
+      color: red;
+    }
+
+    #mod-login {
+      margin: 15px auto;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="container" id="chat-container">
     <div class="header">Education Chat</div>
     <div class="members-count" id="members-count">0 members online</div>
     <div class="messages" id="messages"></div>
@@ -101,7 +124,13 @@
       <input class="message-form__file" id="file-input" type="file" accept="image/*" />
       <button class="message-form__button" type="submit">Send</button>
     </form>
+    <button id="mod-login">Sign in as Moderator</button>
   </div>
+
+  <div id="kicked-screen">You have been kicked from the chat.</div>
+  <div id="banned-screen">You are banned from the chat.</div>
+  <div id="timeout-screen">You are timed out. Wait <span id="timeout-timer"></span> minutes.</div>
+
   <script src="script.js"></script>
 </body>
 </html>
