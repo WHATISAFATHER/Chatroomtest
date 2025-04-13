@@ -57,12 +57,6 @@
       background-color: #e0f7fa;
     }
 
-    .message img {
-      max-width: 100%;
-      border-radius: 10px;
-      margin-top: 5px;
-    }
-
     .message.mod {
       color: red;
       font-weight: bold;
@@ -73,7 +67,6 @@
       padding: 15px;
       border-top: 2px solid #4caf50;
       background-color: #f7fbfc;
-      flex-wrap: wrap;
     }
 
     .message-form__input {
@@ -119,7 +112,7 @@
     <div class="messages" id="messages"></div>
     <form class="message-form" id="form">
       <input class="message-form__input" id="input" type="text" placeholder="Type a message..." />
-      <input class="message-form__file" id="fileInput" type="file" accept="image/*" />
+      <input class="message-form__file" id="file-input" type="file" accept="image/*" />
       <button class="message-form__button" type="submit">Send</button>
     </form>
     <button id="mod-login">Sign in as Moderator</button>
