@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Education Chat for Kids</title>
+  <title>Education Chat</title>
   <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
   <style>
     body {
@@ -57,6 +57,11 @@
       background-color: #e0f7fa;
     }
 
+    .message.mod {
+      color: red;
+      font-weight: bold;
+    }
+
     .message-form {
       display: flex;
       padding: 15px;
@@ -83,11 +88,11 @@
       cursor: pointer;
     }
 
-    #kicked-screen, #banned-screen {
+    #kicked-screen, #banned-screen, #timeout-screen {
       display: none;
-      margin-top: 50px;
+      margin-top: 30px;
       text-align: center;
-      font-size: 24px;
+      font-size: 20px;
       color: red;
     }
 
@@ -98,7 +103,7 @@
 </head>
 <body>
   <div class="container" id="chat-container">
-    <div class="header">Education Chat for Kids</div>
+    <div class="header">Education Chat</div>
     <div class="members-count" id="members-count">0 members online</div>
     <div class="messages" id="messages"></div>
     <form class="message-form" id="form">
@@ -110,6 +115,7 @@
 
   <div id="kicked-screen">You have been kicked from the chat.</div>
   <div id="banned-screen">You are banned from the chat.</div>
+  <div id="timeout-screen">You are timed out. Wait <span id="timeout-timer"></span> minutes.</div>
 
   <script src="script.js"></script>
 </body>
